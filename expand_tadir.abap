@@ -208,10 +208,11 @@ FORM expend_tadir  CHANGING p_it_tadir TYPE  gyt_tadir
 
   DATA: lr_prog_include TYPE gyr_include,
         lr_fugr_include TYPE gyr_include,
+        lr_clas_include TYPE gyr_include,
         lr_include      TYPE gyr_include.
 
   " For class
-  PERFORM expend_clas USING p_it_tadir.
+  PERFORM expend_clas USING p_it_tadir CHANGING lr_clas_include.
 
 
   " For program
@@ -259,46 +260,43 @@ ENDFORM.
 *----------------------------------------------------------------------*
 *      -->P_P_IT_TADIR  text
 *----------------------------------------------------------------------*
-FORM expend_clas  USING    p_p_it_tadir TYPE  gyt_tadir.
+FORM expend_clas  USING    p_p_it_tadir TYPE  gyt_tadir
+                  CHANGING p_lr_fugr_include TYPE gyr_include.
   " Use class CL_OO_CLASSNAME_SERVICE to get the includes related to a class/interface
   " To get all includes, method GET_ALL_CLASS_INCLUDES() can be called. Otherwise call individual methods
   " For later read in tables CROSS/WBCROSSGT, some includes are not needed CP/CI...
   " These methods are not called in mass: how to manage ? Is it ok to loop at it_tadir ?
   " How to append list of includes in final list ?
 
-  DATA: lt_includes       TYPE RANGE OF progname,
-        lt_class_includes TYPE STANDARD TABLE OF progname,
-        lv_classname      TYPE tadir-obj_name,
-        lv_lenght         TYPE i,
+  DATA: lv_lenght         TYPE i,
         lv_include        TYPE progname.
 
 
-  CLEAR lt_includes.
 
   LOOP AT p_p_it_tadir ASSIGNING FIELD-SYMBOL(<ls_tadir>) WHERE object = 'CLAS' OR object = 'INTF'.
-    CLEAR : lt_class_includes, lv_lenght.
+    CLEAR : lv_lenght.
 
 
 *    lv_lenght = strlen( <ls_tadir>-obj_name ).
 
 *
 *    DO 30 - lv_lenght TIMES.
-*      <lv_include> = <ls_tadir>-obj_name && '='.
+*      lv_include = ls_tadir-obj_name && '='.
 *    ENDDO.
 *
-*    <lv_include> = <lv_include> && 'C*'.
+*    lv_include = lv_include && 'C*'.
 
 
     lv_include =  <ls_tadir>-obj_name && repeat( val = '=' occ = 30 - strlen( <ls_tadir>-obj_name ) ) && 'C*'.
 
 
-    APPEND VALUE #( sign = 'I' option = 'EQ' low = lv_include ) TO lt_includes.
+    APPEND VALUE #( sign = 'I' option = 'EQ' low = lv_include ) TO p_lr_fugr_include.
 
   ENDLOOP.
 
 * Remove duplicates from range table
-  SORT lt_includes BY low.
-  DELETE ADJACENT DUPLICATES FROM lt_includes COMPARING low.
+  SORT p_lr_fugr_include BY low.
+  DELETE ADJACENT DUPLICATES FROM p_lr_fugr_include COMPARING low.
 
 * Read WBCROSSGT using the range table
 *  SELECT * FROM wbcrossgt
